@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { offsetDateTimeSchema } from "./offsetDateTime.js";
 
-/** The validator this schema replaces; it remains the oracle for the accepted set. */
+/** The Zod validator formerly mirrored by the portable regex. Newer Zod releases reject omitted seconds. */
 const replaced = z.string().datetime({ offset: true });
 
 const ACCEPTED: readonly (readonly [string, string])[] = [
@@ -53,13 +53,15 @@ describe("offset datetime schema", () => {
     expect(offsetDateTimeSchema.safeParse(value).success).toBe(false);
   });
 
-  it("classifies every case exactly as the replaced Zod validator does", () => {
+  it("retains compatibility with the former validator except for omitted seconds", () => {
+    // Zod 4.6 rejects omitted seconds, but this public-facing regex deliberately
+    // keeps accepting that previously supported ISO-8601 form.
     const divergences = CASES.filter(
       ([, value]) =>
         offsetDateTimeSchema.safeParse(value).success !==
         replaced.safeParse(value).success,
     ).map(([label]) => label);
-    expect(divergences).toEqual([]);
+    expect(divergences).toEqual(["omitted seconds"]);
   });
 
   it("emits a pattern that compiles in every mode a client may use", () => {
